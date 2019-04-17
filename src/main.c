@@ -13,7 +13,7 @@ int main(int argc, char *argv[]) {
 
   char *endptr;
   unsigned long i, j, k, acc;
-  int mul;
+  int mul, next;
 
   upper_limit = strtoul(argv[1], &endptr, 10);
 
@@ -36,8 +36,16 @@ int main(int argc, char *argv[]) {
   primes = sieve_size;
 
   acc = 0;
+  next = -1;
   for (i = 1, k = 3; k * k <= upper_limit; i++, k += 2) {
     acc += k;
+    next++;
+
+    if (next == 3) {
+      next = 0;
+      continue;
+    }
+
     if (k == 5)
       mul = 2;
     else
