@@ -7,14 +7,10 @@
 
 int main(int argc, char *argv[]) {
   char *sieve;
-  unsigned long sieve_size;
-  unsigned long upper_limit;
-  unsigned long primes;
-
-  int right, s;
-  unsigned long i, j, k, p, q, n, ios;
-
   char *endptr;
+  int right, signal;
+  unsigned long upper_limit, sieve_size, primes;
+  unsigned long i, j, k, n, aux;
 
   upper_limit = strtoul(argv[1], &endptr, 10);
 
@@ -38,56 +34,33 @@ int main(int argc, char *argv[]) {
 
   primes = sieve_size + 2;
 
-  // printf("Sieve has size %lu with %lu possible primes\n", sieve_size, primes);
-
   for (i = 0, k = 1, n = 5, right = 0; n * n <= upper_limit;
        i++, k += 1 * right, n += 2 + 2 * right, right = !right) {
-    // printf("i = %lu, k = %lu, n = %lu, right = %d", i, k, n, right);
     if (!sieve[i]) {
       if (!right) {
-        ios = (k * n - k) * 2 - 1;
-        s = -1;
+        j = (k * n - k) * 2 - 1;
+        signal = -1;
+      } else {
+        j = (k + n * k) * 2 - 1;
+        signal = 1;
       }
-      else {
-        ios = (k + n * k) * 2 - 1;
-        s = 1;
-      }
-      // printf(", ios = %lu", ios);
-      // printf("\n");
-      // printf("For %lu mark indexes: ", n);
-      for (j = ios; j < sieve_size; j += 2 * n) {
-        // printf("For n = %lu, with %lu primes, remove:\n", n, primes);
-        p = j;
-        q = j + n + 2 * s * k;
-        if (!sieve[p]) {
-          // printf("sieve[%lu]\n", p);
-          sieve[p] = COMPOSITE;
+      for (; j < sieve_size; j += 2 * n) {
+        if (!sieve[j]) {
+          sieve[j] = COMPOSITE;
           primes--;
         }
-        if (q < sieve_size) {
-          if (!sieve[q]) {
-            // printf("sieve[%lu]\n", q);
-            sieve[q] = COMPOSITE;
+        aux = j + n + 2 * signal * k;
+        if (aux < sieve_size) {
+          if (!sieve[aux]) {
+            sieve[aux] = COMPOSITE;
             primes--;
           }
         }
-        
-        // printf("\n");
       }
     }
-    // printf("\n");
   }
 
   printf("%lu primes\n", primes);
-
-  /*
-  for (i = 0, n = 5, right = 0; i < sieve_size;
-       i++, n += 2 + 2 * right, right = !right) {
-    if (!sieve[i]) {
-      printf("sieve[%lu] = %lu\n", i, n);
-    }
-  }
-  */
 
   free(sieve);
   return 0;
