@@ -11,9 +11,10 @@ int main(int argc, char *argv[]) {
   unsigned long upper_limit;
   unsigned long primes;
 
+  int right, s;
+  unsigned long i, j, k, p, q, n, ios;
+
   char *endptr;
-  unsigned long i, j, k, acc;
-  int mul, next;
 
   upper_limit = strtoul(argv[1], &endptr, 10);
 
@@ -25,46 +26,68 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
 
-  sieve_size = (upper_limit - 1) / 2 + 1;
+  sieve_size = (upper_limit + 1) / 6 * 2;
+
+  if (sieve_size / 2 * 6 > upper_limit)
+    sieve_size--;
+
   sieve = malloc((sieve_size + 1) * sizeof(char));
 
-  sieve[0] = COMPOSITE;
-
-  for (i = 1; i < sieve_size; i++)
+  for (i = 0; i < sieve_size; i++)
     sieve[i] = PRIME;
 
-  primes = sieve_size;
+  primes = sieve_size + 2;
 
-  acc = 0;
-  next = -1;
-  for (i = 1, k = 3; k * k <= upper_limit; i++, k += 2) {
-    acc += k;
-    next++;
+  // printf("Sieve has size %lu with %lu possible primes\n", sieve_size, primes);
 
-    if (next == 3) {
-      next = 0;
-      continue;
-    }
-
-    if (k == 5)
-      mul = 2;
-    else
-      mul = 1;
+  for (i = 0, k = 1, n = 5, right = 0; n * n <= upper_limit;
+       i++, k += 1 * right, n += 2 + 2 * right, right = !right) {
+    // printf("i = %lu, k = %lu, n = %lu, right = %d", i, k, n, right);
     if (!sieve[i]) {
-      for (j = i * i + acc; j < sieve_size; j += k * mul) {
-        if (!sieve[j]) {
-          if (k == 5 && mul == 1)
-            mul = 2;
-          else
-            mul = 1;
-          sieve[j] = COMPOSITE;
+      if (!right) {
+        ios = (k * n - k) * 2 - 1;
+        s = -1;
+      }
+      else {
+        ios = (k + n * k) * 2 - 1;
+        s = 1;
+      }
+      // printf(", ios = %lu", ios);
+      // printf("\n");
+      // printf("For %lu mark indexes: ", n);
+      for (j = ios; j < sieve_size; j += 2 * n) {
+        // printf("For n = %lu, with %lu primes, remove:\n", n, primes);
+        p = j;
+        q = j + n + 2 * s * k;
+        if (!sieve[p]) {
+          // printf("sieve[%lu]\n", p);
+          sieve[p] = COMPOSITE;
           primes--;
         }
+        if (q < sieve_size) {
+          if (!sieve[q]) {
+            // printf("sieve[%lu]\n", q);
+            sieve[q] = COMPOSITE;
+            primes--;
+          }
+        }
+        
+        // printf("\n");
       }
     }
+    // printf("\n");
   }
 
-  printf("There are %lu numbers marked as prime\n", primes);
+  printf("%lu primes\n", primes);
+
+  /*
+  for (i = 0, n = 5, right = 0; i < sieve_size;
+       i++, n += 2 + 2 * right, right = !right) {
+    if (!sieve[i]) {
+      printf("sieve[%lu] = %lu\n", i, n);
+    }
+  }
+  */
 
   free(sieve);
   return 0;
