@@ -1,17 +1,25 @@
 #include <errno.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-#define SetComposite(S, k) (S[(k >> 5)] |= (1 << (k & (32 - 1))))
-#define SetPrime(S, k) (S[(k >> 5)] &= ~(1 << (k & (32 - 1))))
-#define IsComposite(S, k) (S[(k >> 5)] & (1 << (k & (32 - 1))))
+#define SV_BLK_T char  // SIEVE BLOCK TYPE
+#define SV_BLK_SZ 8    // SIEVE BLOCK SIZE
+#define SV_BLK_SZ_LG 3 // LOG BASE 2 OF SIEVE BLOCK SIZE
+
+#define MOD(a, b) (a & (b - 1))
+#define SET_BIT(t, sz, lg_sz, A, i) (A[(i >> lg_sz)] |= ((t)1 << MOD(i, sz)))
+#define CLR_BIT(t, sz, lg_sz, A, i) (A[(i >> lg_sz)] &= ~((t)1 << MOD(i, sz)))
+#define TST_BIT(t, sz, lg_sz, A, i) (A[(i >> lg_sz)] & ((t)1 << MOD(i, sz)))
+
+#define SV_SET_BIT(A, i) (SET_BIT(SV_BLK_T, SV_BLK_SZ, SV_BLK_SZ_LG, A, i))
+#define SV_CLR_BIT(A, i) (CLR_BIT(SV_BLK_T, SV_BLK_SZ, SV_BLK_SZ_LG, A, i))
+#define SV_TST_BIT(A, i) (TST_BIT(SV_BLK_T, SV_BLK_SZ, SV_BLK_SZ_LG, A, i))
 
 int main(int argc, char *argv[]) {
-  int32_t *sieve;
+  SV_BLK_T *sieve;
   char *endptr;
-  int right, signal;
-  unsigned long upper_limit, sieve_size, primes;
+  int right, sign;
+  unsigned long upper_limit, sieve_size, primes_count;
   unsigned long i, j, k, n, aux;
 
   upper_limit = strtoul(argv[1], &endptr, 10);
@@ -29,40 +37,40 @@ int main(int argc, char *argv[]) {
   if (sieve_size / 2 * 6 > upper_limit)
     sieve_size--;
 
-  sieve = malloc((sieve_size / 32 + 1) * sizeof(int32_t));
+  sieve = malloc((sieve_size / SV_BLK_SZ + 1) * sizeof(SV_BLK_T));
 
   for (i = 0; i < sieve_size; i++)
-    SetPrime(sieve, i);
+    SV_CLR_BIT(sieve, i);
 
-  primes = sieve_size + 2;
+  primes_count = sieve_size + 2;
 
   for (i = 0, k = 1, n = 5, right = 0; n * n <= upper_limit;
        i++, k += 1 * right, n += 2 + 2 * right, right = !right) {
-    if (!IsComposite(sieve, i)) {
+    if (!SV_TST_BIT(sieve, i)) {
       if (!right) {
         j = (k * n - k) * 2 - 1;
-        signal = -1;
+        sign = -1;
       } else {
         j = (k + n * k) * 2 - 1;
-        signal = 1;
+        sign = 1;
       }
       for (; j < sieve_size; j += 2 * n) {
-        if (!IsComposite(sieve, j)) {
-          SetComposite(sieve, j);
-          primes--;
+        if (!SV_TST_BIT(sieve, j)) {
+          SV_SET_BIT(sieve, j);
+          primes_count--;
         }
-        aux = j + n + 2 * signal * k;
+        aux = j + n + 2 * sign * k;
         if (aux < sieve_size) {
-          if (!IsComposite(sieve, aux)) {
-            SetComposite(sieve, aux);
-            primes--;
+          if (!SV_TST_BIT(sieve, aux)) {
+            SV_SET_BIT(sieve, aux);
+            primes_count--;
           }
         }
       }
     }
   }
 
-  printf("%lu primes\n", primes);
+  printf("%lu primes\n", primes_count);
 
   free(sieve);
   return 0;
