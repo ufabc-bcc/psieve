@@ -48,8 +48,6 @@ int main(int argc, char *argv[]) {
 
   sieve_size = (upper_limit + 1) / 6 * 2;
 
-  printf("sieve_size: %lu\n", sieve_size);
-
   if (sieve_size / 2 * 6 >= upper_limit)
     sieve_size--;
 
@@ -60,9 +58,8 @@ int main(int argc, char *argv[]) {
   blocks = sqrtul(upper_limit);
   primes_count = sieve_size + 2;
 
-  printf("primes_count: %lu\n", primes_count);
-
   for (offset = 0; offset < sieve_size; offset += blocks) {
+    printf("Test data between indexes %lu and %lu\n", offset, offset + blocks);
     for (i = 0, k = 1, n = 5, right = 0; n * n <= upper_limit;
          i++, k += 1 * right, n += 2 + 2 * right, right = !right) {
       if (!SV_TST_BIT(sieve, i)) {
@@ -75,9 +72,9 @@ int main(int argc, char *argv[]) {
         }
 
         if (offset > j)
-          j += 2 * n * ((offset - j) / (2 * n));
+          j += 2 * n * ((offset - j) / (2 * n) + !right);
 
-        for (; j < offset + blocks && j < sieve_size; j += 2 * n) {
+        for (; j <= offset + blocks && j < sieve_size; j += 2 * n) {
           if (!SV_TST_BIT(sieve, j)) {
             SV_SET_BIT(sieve, j);
             primes_count--;
