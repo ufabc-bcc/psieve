@@ -1,4 +1,5 @@
 #include <errno.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -15,8 +16,8 @@
 #define SV_CLR_BIT(A, i) (CLR_BIT(SV_BLK_T, SV_BLK_SZ, SV_BLK_SZ_LG, A, i))
 #define SV_TST_BIT(A, i) (TST_BIT(SV_BLK_T, SV_BLK_SZ, SV_BLK_SZ_LG, A, i))
 
-unsigned long sqrtul(unsigned long x) {
-  unsigned long i;
+uint64_t sqrtul(uint64_t x) {
+  uint64_t i;
 
   if (x == 0 || x == 1)
     return x;
@@ -28,12 +29,59 @@ unsigned long sqrtul(unsigned long x) {
   return i - 1;
 }
 
+uint64_t mark(SV_BLK_T *sieve, uint64_t sieve_size, uint64_t upper_limit,
+              uint64_t start, uint64_t end) {
+  int8_t right, sign;
+  uint64_t i, j, k, n, aux;
+  uint64_t marked;
+
+  marked = 0;
+
+  for (i = 0, k = 1, n = 5, right = 0; n * n <= upper_limit;
+       i++, k += 1 * right, n += 2 + 2 * right, right = !right) {
+    if (!SV_TST_BIT(sieve, i)) {
+      if (!right) {
+        j = (k * n - k) * 2 - 1;
+        sign = -1;
+      } else {
+        j = (k + n * k) * 2 - 1;
+        sign = 1;
+      }
+
+      if (start > j)
+        j += 2 * n * ((start - j) / (2 * n));
+
+      for (; j <= end && j < sieve_size; j += 2 * n) {
+        if (j > start) {
+          // printf("Visit j = %lu\n", j);
+          if (!SV_TST_BIT(sieve, j)) {
+            SV_SET_BIT(sieve, j);
+            // primes_count--;
+            marked++;
+          }
+        }
+        aux = j + n + 2 * sign * k;
+        if (aux > start && aux <= end && aux < sieve_size) {
+          // printf("Visit aux = %lu\n", aux);
+          if (!SV_TST_BIT(sieve, aux)) {
+            SV_SET_BIT(sieve, aux);
+            // primes_count--;
+            marked++;
+          }
+        }
+      }
+    }
+  }
+
+  return marked;
+}
+
 int main(int argc, char *argv[]) {
   SV_BLK_T *sieve;
   char *endptr;
-  int right, sign;
-  unsigned long upper_limit, sieve_size, blocks, start, end, primes_count;
-  unsigned long i, j, k, n, aux;
+  int8_t right, sign;
+  uint64_t upper_limit, sieve_size, blocks, start, end, primes_count;
+  uint64_t i, j, k, n, aux;
 
   upper_limit = strtoul(argv[1], &endptr, 10);
 
@@ -60,39 +108,7 @@ int main(int argc, char *argv[]) {
   for (start = 0, end = blocks; start < sieve_size;
        start += blocks, end += blocks) {
     // printf("Test data between indexes %lu and %lu\n", start, end);
-    for (i = 0, k = 1, n = 5, right = 0; n * n <= upper_limit;
-         i++, k += 1 * right, n += 2 + 2 * right, right = !right) {
-      if (!SV_TST_BIT(sieve, i)) {
-        if (!right) {
-          j = (k * n - k) * 2 - 1;
-          sign = -1;
-        } else {
-          j = (k + n * k) * 2 - 1;
-          sign = 1;
-        }
-
-        if (start > j)
-          j += 2 * n * ((start - j) / (2 * n));
-
-        for (; j <= end && j < sieve_size; j += 2 * n) {
-          if (j > start) {
-            //printf("Visit j = %lu\n", j);
-            if (!SV_TST_BIT(sieve, j)) {
-              SV_SET_BIT(sieve, j);
-              primes_count--;
-            }
-          }
-          aux = j + n + 2 * sign * k;
-          if (aux > start && aux <= end && aux < sieve_size) {
-            //printf("Visit aux = %lu\n", aux);
-            if (!SV_TST_BIT(sieve, aux)) {
-              SV_SET_BIT(sieve, aux);
-              primes_count--;
-            }
-          }
-        }
-      }
-    }
+    primes_count -= mark(sieve, sieve_size, upper_limit, start, end);
   }
 
   /*
