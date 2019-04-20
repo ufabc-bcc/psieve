@@ -21,6 +21,7 @@ int main(int argc, char *argv[]) {
   int right, sign;
   unsigned long upper_limit, sieve_size, primes_count;
   unsigned long i, j, k, n, aux;
+  unsigned long s, m;
 
   upper_limit = strtoul(argv[1], &endptr, 10);
 
@@ -44,31 +45,45 @@ int main(int argc, char *argv[]) {
 
   primes_count = sieve_size + 2;
 
-  for (i = 0, k = 1, n = 5, right = 0; n * n <= upper_limit;
-       i++, k += 1 * right, n += 2 + 2 * right, right = !right) {
-    if (!SV_TST_BIT(sieve, i)) {
-      if (!right) {
-        j = (k * n - k) * 2 - 1;
-        sign = -1;
-      } else {
-        j = (k + n * k) * 2 - 1;
-        sign = 1;
-      }
-      for (; j < sieve_size; j += 2 * n) {
-        if (!SV_TST_BIT(sieve, j)) {
-          SV_SET_BIT(sieve, j);
-          primes_count--;
+  for (s = 0; s <= sieve_size; s += 100000000) {
+    for (i = 0, k = 1, n = 5, right = 0; n * n <= upper_limit;
+         i++, k += 1 * right, n += 2 + 2 * right, right = !right) {
+      if (!SV_TST_BIT(sieve, i)) {
+        if (!right) {
+          j = (k * n - k) * 2 - 1;
+          sign = -1;
+        } else {
+          j = (k + n * k) * 2 - 1;
+          sign = 1;
         }
-        aux = j + n + 2 * sign * k;
-        if (aux < sieve_size) {
-          if (!SV_TST_BIT(sieve, aux)) {
-            SV_SET_BIT(sieve, aux);
+        m = 0;
+        if (s > j) {
+          m = (s - j) / (2 * n);
+        }
+        j += 2 * n * m;
+        // printf("for n = %lu starting j is %lu (s = %lu, m = %lu)\n", n, j, s, m);
+        for (; j <= s + 100000000 && j < sieve_size; j += 2 * n) {
+          if (!SV_TST_BIT(sieve, j)) {
+            SV_SET_BIT(sieve, j);
             primes_count--;
+          }
+          aux = j + n + 2 * sign * k;
+          if (aux < sieve_size) {
+            if (!SV_TST_BIT(sieve, aux)) {
+              SV_SET_BIT(sieve, aux);
+              primes_count--;
+            }
           }
         }
       }
     }
   }
+
+/*
+  for (i = 0, n = 5, right = 0; i < sieve_size;
+       i++, n += 2 + 2 * right, right = !right)
+    if (!SV_TST_BIT(sieve, i))
+      printf("S[%lu] is %lu\n", i, n);*/
 
   printf("%lu primes\n", primes_count);
 
