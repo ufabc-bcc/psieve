@@ -47,7 +47,10 @@ int main(int argc, char *argv[]) {
   }
 
   sieve_size = (upper_limit + 1) / 6 * 2;
-  if (sieve_size / 2 * 6 > upper_limit)
+
+  printf("sieve_size: %lu\n", sieve_size);
+
+  if (sieve_size / 2 * 6 >= upper_limit)
     sieve_size--;
 
   sieve = malloc((sieve_size / SV_BLK_SZ + 1) * sizeof(SV_BLK_T));
@@ -56,6 +59,8 @@ int main(int argc, char *argv[]) {
 
   blocks = sqrtul(upper_limit);
   primes_count = sieve_size + 2;
+
+  printf("primes_count: %lu\n", primes_count);
 
   for (offset = 0; offset < sieve_size; offset += blocks) {
     for (i = 0, k = 1, n = 5, right = 0; n * n <= upper_limit;
