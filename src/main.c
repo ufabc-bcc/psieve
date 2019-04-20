@@ -1,5 +1,4 @@
 #include <errno.h>
-#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -33,7 +32,7 @@ int main(int argc, char *argv[]) {
   SV_BLK_T *sieve;
   char *endptr;
   int right, sign;
-  unsigned long upper_limit, sieve_size, blocks, offset, primes_count;
+  unsigned long upper_limit, sieve_size, blocks, start, end, primes_count;
   unsigned long i, j, k, n, aux;
 
   upper_limit = strtoul(argv[1], &endptr, 10);
@@ -55,11 +54,12 @@ int main(int argc, char *argv[]) {
   for (i = 0; i < sieve_size; i++)
     SV_CLR_BIT(sieve, i);
 
-  blocks = sqrtul(upper_limit);
+  blocks = 32000;
   primes_count = sieve_size + 2;
 
-  for (offset = 0; offset < sieve_size; offset += blocks) {
-    printf("Test data between indexes %lu and %lu\n", offset, offset + blocks);
+  for (start = 0, end = blocks; start < sieve_size;
+       start += blocks, end += blocks) {
+    // printf("Test data between indexes %lu and %lu\n", start, end);
     for (i = 0, k = 1, n = 5, right = 0; n * n <= upper_limit;
          i++, k += 1 * right, n += 2 + 2 * right, right = !right) {
       if (!SV_TST_BIT(sieve, i)) {
@@ -71,16 +71,20 @@ int main(int argc, char *argv[]) {
           sign = 1;
         }
 
-        if (offset > j)
-          j += 2 * n * ((offset - j) / (2 * n) + !right);
+        if (start > j)
+          j += 2 * n * ((start - j) / (2 * n));
 
-        for (; j <= offset + blocks && j < sieve_size; j += 2 * n) {
-          if (!SV_TST_BIT(sieve, j)) {
-            SV_SET_BIT(sieve, j);
-            primes_count--;
+        for (; j <= end && j < sieve_size; j += 2 * n) {
+          if (j > start) {
+            //printf("Visit j = %lu\n", j);
+            if (!SV_TST_BIT(sieve, j)) {
+              SV_SET_BIT(sieve, j);
+              primes_count--;
+            }
           }
           aux = j + n + 2 * sign * k;
-          if (aux < sieve_size) {
+          if (aux > start && aux <= end && aux < sieve_size) {
+            //printf("Visit aux = %lu\n", aux);
             if (!SV_TST_BIT(sieve, aux)) {
               SV_SET_BIT(sieve, aux);
               primes_count--;
@@ -90,6 +94,14 @@ int main(int argc, char *argv[]) {
       }
     }
   }
+
+  /*
+    for (i = 0, n = 5, right = 0; i < sieve_size;
+         i++, n += 2 + 2 * right, right = !right) {
+      if (!SV_TST_BIT(sieve, i))
+        printf("sieve[%lu] has prime %lu\n", i, n);
+    }
+    */
 
   printf("%lu primes\n", primes_count);
 
