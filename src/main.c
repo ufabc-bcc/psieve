@@ -3,9 +3,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define SV_BLK_T char  // SIEVE BLOCK TYPE
-#define SV_BLK_SZ 8    // SIEVE BLOCK SIZE
-#define SV_BLK_SZ_LG 3 // LOG BASE 2 OF SIEVE BLOCK SIZE
+#define SV_BLK_T char     // SIEVE BLOCK TYPE
+#define SV_BLK_SZ 8       // SIEVE BLOCK SIZE
+#define SV_BLK_SZ_LG 3    // LOG BASE 2 OF SIEVE BLOCK SIZE
+#define SV_BLK_CT 2000000 // SIEVE BLOCKS MARKED AT ONCE
 
 #define MOD(a, b) (a & (b - 1))
 #define SET_BIT(t, sz, lg_sz, A, i) (A[(i >> lg_sz)] |= ((t)1 << MOD(i, sz)))
@@ -29,8 +30,8 @@ uint64_t sqrtul(uint64_t x) {
   return i - 1;
 }
 
-uint64_t mark(SV_BLK_T *sieve, uint64_t sieve_size, uint64_t until, uint64_t upper_limit,
-              uint64_t start, uint64_t end) {
+uint64_t mark(SV_BLK_T *sieve, uint64_t sieve_size, uint64_t until,
+              uint64_t upper_limit, uint64_t start, uint64_t end) {
   int8_t right, sign;
   uint64_t i, j, k, n, aux;
   uint64_t marked;
@@ -40,32 +41,22 @@ uint64_t mark(SV_BLK_T *sieve, uint64_t sieve_size, uint64_t until, uint64_t upp
   for (i = 0, k = 1, n = 5, right = 0; i <= until;
        i++, k += 1 * right, n += 2 + 2 * right, right = !right) {
     if (!SV_TST_BIT(sieve, i)) {
-      // printf("%lu at sieve[%lu] is prime then mark\n", n, i);
       if (!right) {
         j = (k * n - k) * 2 - 1;
         sign = -1;
-      }
-      else {
+      } else {
         j = (k + n * k) * 2 - 1;
         sign = 1;
       }
 
-      // printf("next index should be %lu\n", j);
-
-      if (start > j) {
+      if (start > j)
         j += 2 * n * ((start - j) / (2 * n));
-        // printf("adjusted index is %lu\n", j);
-      }
 
       for (; j <= end && j < sieve_size; j += n + 2 * sign * k, sign *= -1)
         if (j > start && j <= end && j < sieve_size)
           if (!SV_TST_BIT(sieve, j)) {
-            // printf("mark sieve[%lu]\n", j);
             SV_SET_BIT(sieve, j);
             marked++;
-          }
-          else {
-            // printf("sieve[%lu] was already marked\n", j);
           }
     }
   }
@@ -75,10 +66,11 @@ uint64_t mark(SV_BLK_T *sieve, uint64_t sieve_size, uint64_t until, uint64_t upp
 
 int main(int argc, char *argv[]) {
   SV_BLK_T *sieve;
+  uint64_t upper_limit, upper_limit_sqrt, upper_limit_sqrt_idx;
+  uint64_t sieve_size;
+  uint64_t start, end, primes_count;
+  uint64_t i, k;
   char *endptr;
-  int8_t right, sign;
-  uint64_t upper_limit, sieve_size, blocks, start, end, primes_count;
-  uint64_t i, j, k, n, aux;
 
   upper_limit = strtoul(argv[1], &endptr, 10);
 
@@ -90,41 +82,27 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
 
-  sieve_size = (upper_limit + 1) / 6 * 2;
-
-  if (sieve_size / 2 * 6 >= upper_limit)
+  k = (upper_limit + 1) / 6;
+  sieve_size = k * 2;
+  if (upper_limit < k * 6)
     sieve_size--;
+
+  upper_limit_sqrt = sqrtul(upper_limit);
+  k = (upper_limit_sqrt + 1) / 6;
+  upper_limit_sqrt_idx = k * 2;
+  if (upper_limit_sqrt < k * 6)
+    upper_limit_sqrt_idx--;
 
   sieve = malloc((sieve_size / SV_BLK_SZ + 1) * sizeof(SV_BLK_T));
   for (i = 0; i < sieve_size; i++)
     SV_CLR_BIT(sieve, i);
 
-  uint64_t ulimt_sqrt = (sqrtul(upper_limit));
-
-  blocks = ulimt_sqrt;
   primes_count = sieve_size + 2;
-
-  uint64_t until = ((sqrtul(upper_limit) + 1) / 6) * 2;
-  if (until / 2 * 6 >= ulimt_sqrt)
-    until--;
-
-  until--;
-
-  // printf("until: %lu\n", until);
-
-
-  for (i = 1, start = 0, end = blocks; start < sieve_size;
-       start = end, end += blocks * i, i++) {
-    //printf("Test data between indexes %lu and %lu\n", start, end);
-    primes_count -= mark(sieve, sieve_size, until, upper_limit, start, end);
+  for (start = 0, end = SV_BLK_CT; start < sieve_size;
+       start = end, end += SV_BLK_CT) {
+    primes_count -=
+        mark(sieve, sieve_size, upper_limit_sqrt_idx, upper_limit, start, end);
   }
-
-/*
-  for (i = 0, n = 5, right = 0; i < sieve_size;
-       i++, n += 2 + 2 * right, right = !right) {
-    if (!SV_TST_BIT(sieve, i))
-      printf("sieve[%lu] has prime %lu\n", i, n);
-  }*/
 
   printf("%lu primes\n", primes_count);
 
