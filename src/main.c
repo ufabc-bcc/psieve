@@ -44,32 +44,36 @@ int64_t sieveSize(int64_t upper_limit) {
 
 int64_t sieveIndexOf(int64_t value) { return sieveSize(value) - 1; }
 
-int64_t sieveMark(SV_BLK_T *sieve, int64_t sieve_size, int64_t sieve_base,
-                  int64_t start, int64_t end) {
+int64_t sieveMark(SV_BLK_T *sieve, int64_t sieve_size, int64_t sieve_base) {
   int64_t marked;
   int64_t i, j, k, n;
+  int64_t start, end;
   int8_t right, sign;
 
   marked = 0;
-  for (i = 0, k = 1, n = 5, right = 0; i <= sieve_base;
-       i++, k += 1 * right, n += 2 + 2 * right, right = !right) {
-    if (!SV_TST_BIT(sieve, i)) {
-      if (!right) {
-        sign = -1;
-        j = (k * n - k) * 2 - 1;
-      } else {
-        sign = 1;
-        j = (k + n * k) * 2 - 1;
-      }
 
-      if (start > j)
-        j += 2 * n * ((start - j) / (2 * n));
+  for (start = 0, end = SV_BLK_CT; start < sieve_size;
+       start = end, end += SV_BLK_CT) {
+    for (i = 0, k = 1, n = 5, right = 0; i <= sieve_base;
+         i++, k += 1 * right, n += 2 + 2 * right, right = !right) {
+      if (!SV_TST_BIT(sieve, i)) {
+        if (!right) {
+          sign = -1;
+          j = (k * n - k) * 2 - 1;
+        } else {
+          sign = 1;
+          j = (k + n * k) * 2 - 1;
+        }
 
-      for (; j <= end && j < sieve_size; j += n + 2 * sign * k, sign *= -1) {
-        if (j > start) {
-          if (!SV_TST_BIT(sieve, j)) {
-            SV_SET_BIT(sieve, j);
-            marked++;
+        if (start > j)
+          j += 2 * n * ((start - j) / (2 * n));
+
+        for (; j <= end && j < sieve_size; j += n + 2 * sign * k, sign *= -1) {
+          if (j > start) {
+            if (!SV_TST_BIT(sieve, j)) {
+              SV_SET_BIT(sieve, j);
+              marked++;
+            }
           }
         }
       }
@@ -84,8 +88,7 @@ int main(int argc, char *argv[]) {
   int64_t sieve_size, sieve_base;
   int64_t upper_limit;
   char *endptr;
-  int64_t i, n, start, end, primes_count;
-  int8_t right;
+  int64_t i, primes_count;
 
   upper_limit = strtol(argv[1], &endptr, 10);
 
@@ -122,10 +125,7 @@ int main(int argc, char *argv[]) {
 
   sieve_base = sieveIndexOf(sqrtul(upper_limit));
 
-  for (start = 0, end = SV_BLK_CT; start < sieve_size;
-       start = end, end += SV_BLK_CT) {
-    primes_count -= sieveMark(sieve, sieve_size, sieve_base, start, end);
-  }
+  primes_count -= sieveMark(sieve, sieve_size, sieve_base);
 
   printf("%ld\n", primes_count);
 
