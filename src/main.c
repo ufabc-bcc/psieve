@@ -17,8 +17,8 @@
 #define SV_CLR_BIT(A, i) (CLR_BIT(SV_BLK_T, SV_BLK_SZ, SV_BLK_SZ_LG, A, i))
 #define SV_TST_BIT(A, i) (TST_BIT(SV_BLK_T, SV_BLK_SZ, SV_BLK_SZ_LG, A, i))
 
-uint64_t sqrtul(uint64_t x) {
-  uint64_t i;
+int64_t sqrtul(int64_t x) {
+  int64_t i;
 
   if (x == 0 || x == 1)
     return x;
@@ -30,9 +30,9 @@ uint64_t sqrtul(uint64_t x) {
   return i - 1;
 }
 
-uint64_t sieveSize(uint64_t upper_limit) {
-  uint64_t sieve_size;
-  uint64_t k;
+int64_t sieveSize(int64_t upper_limit) {
+  int64_t sieve_size;
+  int64_t k;
 
   k = (upper_limit + 1) / 6;
   sieve_size = k * 2;
@@ -42,12 +42,12 @@ uint64_t sieveSize(uint64_t upper_limit) {
   return sieve_size;
 }
 
-uint64_t sieveIndexOf(uint64_t value) { return sieveSize(value) - 1; }
+int64_t sieveIndexOf(int64_t value) { return sieveSize(value) - 1; }
 
-uint64_t sieveMark(SV_BLK_T *sieve, uint64_t sieve_size, uint64_t sieve_base,
-                   uint64_t start, uint64_t end) {
-  uint64_t marked;
-  uint64_t i, j, k, n;
+int64_t sieveMark(SV_BLK_T *sieve, int64_t sieve_size, int64_t sieve_base,
+                  int64_t start, int64_t end) {
+  int64_t marked;
+  int64_t i, j, k, n;
   int8_t right, sign;
 
   marked = 0;
@@ -81,35 +81,53 @@ uint64_t sieveMark(SV_BLK_T *sieve, uint64_t sieve_size, uint64_t sieve_base,
 
 int main(int argc, char *argv[]) {
   SV_BLK_T *sieve;
-  uint64_t sieve_size, sieve_base;
-  uint64_t upper_limit;
+  int64_t sieve_size, sieve_base;
+  int64_t upper_limit;
   char *endptr;
-  uint64_t i, start, end, primes_count;
+  int64_t i, n, start, end, primes_count;
+  int8_t right;
 
-  upper_limit = strtoul(argv[1], &endptr, 10);
+  upper_limit = strtol(argv[1], &endptr, 10);
 
   if (*endptr) {
     printf("The upper limit value is invalid.\n");
     exit(EXIT_FAILURE);
-  } else if (errno == ERANGE) {
+  } else if (upper_limit < 1 || errno == ERANGE) {
     printf("The upper limit value is out of range.\n");
     exit(EXIT_FAILURE);
   }
 
+  if (upper_limit < 2) {
+    printf("0\n");
+    exit(EXIT_SUCCESS);
+  } else if (upper_limit < 3) {
+    printf("1\n");
+    exit(EXIT_SUCCESS);
+  } else if (upper_limit < 5) {
+    printf("2\n");
+    exit(EXIT_SUCCESS);
+  }
+
   sieve_size = sieveSize(upper_limit);
-  sieve_base = sieveIndexOf(sqrtul(upper_limit));
+  primes_count = sieve_size + 2;
+
+  if (upper_limit < 25) {
+    printf("%ld\n", primes_count);
+    exit(EXIT_SUCCESS);
+  }
 
   sieve = malloc((sieve_size / SV_BLK_SZ + 1) * sizeof(SV_BLK_T));
   for (i = 0; i < sieve_size; i++)
     SV_CLR_BIT(sieve, i);
 
-  primes_count = sieve_size + 2;
+  sieve_base = sieveIndexOf(sqrtul(upper_limit));
+
   for (start = 0, end = SV_BLK_CT; start < sieve_size;
        start = end, end += SV_BLK_CT) {
     primes_count -= sieveMark(sieve, sieve_size, sieve_base, start, end);
   }
 
-  printf("%lu primes\n", primes_count);
+  printf("%ld\n", primes_count);
 
   free(sieve);
   return 0;
