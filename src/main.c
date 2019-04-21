@@ -29,7 +29,7 @@ uint64_t sqrtul(uint64_t x) {
   return i - 1;
 }
 
-uint64_t mark(SV_BLK_T *sieve, uint64_t sieve_size, uint64_t upper_limit,
+uint64_t mark(SV_BLK_T *sieve, uint64_t sieve_size, uint64_t until, uint64_t upper_limit,
               uint64_t start, uint64_t end) {
   int8_t right, sign;
   uint64_t i, j, k, n, aux;
@@ -37,19 +37,35 @@ uint64_t mark(SV_BLK_T *sieve, uint64_t sieve_size, uint64_t upper_limit,
 
   marked = 0;
 
-  for (i = 0, k = 1, n = 5, right = 0; n * n <= upper_limit;
+  for (i = 0, k = 1, n = 5, right = 0; i <= until;
        i++, k += 1 * right, n += 2 + 2 * right, right = !right) {
     if (!SV_TST_BIT(sieve, i)) {
-      j = ((k * n - k) * 2 - 1) * !right + ((k + n * k) * 2 - 1) * right;
+      // printf("%lu at sieve[%lu] is prime then mark\n", n, i);
+      if (!right) {
+        j = (k * n - k) * 2 - 1;
+        sign = -1;
+      }
+      else {
+        j = (k + n * k) * 2 - 1;
+        sign = 1;
+      }
 
-      if (start > j)
+      // printf("next index should be %lu\n", j);
+
+      if (start > j) {
         j += 2 * n * ((start - j) / (2 * n));
+        // printf("adjusted index is %lu\n", j);
+      }
 
       for (; j <= end && j < sieve_size; j += n + 2 * sign * k, sign *= -1)
         if (j > start && j <= end && j < sieve_size)
           if (!SV_TST_BIT(sieve, j)) {
+            // printf("mark sieve[%lu]\n", j);
             SV_SET_BIT(sieve, j);
             marked++;
+          }
+          else {
+            // printf("sieve[%lu] was already marked\n", j);
           }
     }
   }
@@ -83,22 +99,32 @@ int main(int argc, char *argv[]) {
   for (i = 0; i < sieve_size; i++)
     SV_CLR_BIT(sieve, i);
 
-  blocks = sqrtul(upper_limit);
+  uint64_t ulimt_sqrt = (sqrtul(upper_limit));
+
+  blocks = ulimt_sqrt;
   primes_count = sieve_size + 2;
 
-  for (start = 0, end = blocks; start < sieve_size;
-       start += blocks, end += blocks) {
-    // printf("Test data between indexes %lu and %lu\n", start, end);
-    primes_count -= mark(sieve, sieve_size, upper_limit, start, end);
+  uint64_t until = ((sqrtul(upper_limit) + 1) / 6) * 2;
+  if (until / 2 * 6 >= ulimt_sqrt)
+    until--;
+
+  until--;
+
+  // printf("until: %lu\n", until);
+
+
+  for (i = 1, start = 0, end = blocks; start < sieve_size;
+       start = end, end += blocks * i, i++) {
+    //printf("Test data between indexes %lu and %lu\n", start, end);
+    primes_count -= mark(sieve, sieve_size, until, upper_limit, start, end);
   }
 
-  /*
-    for (i = 0, n = 5, right = 0; i < sieve_size;
-         i++, n += 2 + 2 * right, right = !right) {
-      if (!SV_TST_BIT(sieve, i))
-        printf("sieve[%lu] has prime %lu\n", i, n);
-    }
-    */
+/*
+  for (i = 0, n = 5, right = 0; i < sieve_size;
+       i++, n += 2 + 2 * right, right = !right) {
+    if (!SV_TST_BIT(sieve, i))
+      printf("sieve[%lu] has prime %lu\n", i, n);
+  }*/
 
   printf("%lu primes\n", primes_count);
 
