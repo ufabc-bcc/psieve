@@ -70,7 +70,6 @@ int64_t sieveMark(SV_BLK_T *sieve, int64_t sieve_size, int64_t sieve_base,
         if (j > start) {
           if (!SV_TST_BIT(sieve, j)) {
             SV_SET_BIT(sieve, j);
-            //printf("marked %ld\n", j);
             marked++;
           }
         }
@@ -97,21 +96,28 @@ void Check_for_error(int local_ok, char *fname, char *message, MPI_Comm comm) {
   }
 }
 
-void Read_n(int *n_p, int my_rank, int comm_sz, MPI_Comm comm) {
+void Read_n(int64_t *n_p, int argc, char **argv, int my_rank, int comm_sz,
+            MPI_Comm comm) {
   int local_ok = 1;
+  char *endptr;
   char *fname = "Read_n";
 
   if (my_rank == 0) {
-    printf("What's the upper limit value?\n");
-    scanf("%d", n_p);
+    *n_p = strtoul(argv[1], &endptr, 10);
+
+    if (*endptr) {
+      *n_p = -1;
+    } else if (*n_p <= 0 || errno == ERANGE) {
+      *n_p = -1;
+    }
   }
-  MPI_Bcast(n_p, 1, MPI_INT, 0, comm);
+  MPI_Bcast(n_p, 1, MPI_INT64_T, 0, comm);
   if (*n_p <= 0)
     local_ok = 0;
   Check_for_error(local_ok, fname, "upper value should be > 0", comm);
 }
 
-void Allocate_vector(SV_BLK_T **local_s_pp, int local_s_sz, MPI_Comm comm) {
+void Allocate_vector(SV_BLK_T **local_s_pp, uint64_t local_s_sz, MPI_Comm comm) {
   int local_ok = 1;
   char *fname = "Allocate_vector";
 
@@ -123,8 +129,8 @@ void Allocate_vector(SV_BLK_T **local_s_pp, int local_s_sz, MPI_Comm comm) {
   Check_for_error(local_ok, fname, "can't allocate local vector(s)", comm);
 }
 
-int main(void) {
-  int n;
+int main(int argc, char *argv[]) {
+  int64_t n;
   int comm_sz, my_rank;
 
   MPI_Comm comm;
@@ -134,8 +140,7 @@ int main(void) {
   MPI_Comm_size(comm, &comm_sz);
   MPI_Comm_rank(comm, &my_rank);
 
-  Read_n(&n, my_rank, comm_sz, comm);
-  printf("Proc %d > n = %d\n", my_rank, n);
+  Read_n(&n, argc, argv, my_rank, comm_sz, comm);
 
   if (n < 2) {
     printf("0\n");
@@ -146,8 +151,12 @@ int main(void) {
   } else {
     int64_t sieve_size, primes_count;
 
+    printf("n: %ld\n", n);
+
     sieve_size = sieveSize(n);
     primes_count = sieve_size + 2;
+
+    printf("sieve_size2: %ld\n", sieve_size);
 
     if (n < 25) {
       printf("%ld\n", primes_count);
@@ -155,29 +164,23 @@ int main(void) {
       int64_t i, start, end, sieve_base;
 
       SV_BLK_T *sieve = NULL;
-      int64_t local_s_sz = sieve_size;
 
-      Allocate_vector(&sieve, local_s_sz, comm);
+      
+      Allocate_vector(&sieve, sieve_size, comm);
 
       for (i = 0; i < sieve_size; i++)
         SV_CLR_BIT(sieve, i);
 
       sieve_base = sieveIndexOf(sqrtul(n));
 
-      uint64_t last = !(comm_sz - (my_rank + 1));
-      uint64_t quota = (sieve_size / comm_sz);
-      uint64_t skip = quota * my_rank;
-      uint64_t take = quota + (sieve_size % comm_sz) * last;
+      int64_t my_start = SV_BLK_CT * my_rank;
+      int64_t skip = SV_BLK_CT * comm_sz;
 
-      uint64_t marked = 0;
-      for (start = skip, end = SV_BLK_CT; start < skip + take + 1;
-           start = end, end += SV_BLK_CT) {
-        printf("rank %d marking --start: %ld --limit: %ld\n", my_rank, start, skip + take);
-        marked += sieveMark(sieve, skip + take + 1, sieve_base, start, end);
+      int64_t marked = 0;
+      for (start = my_start, end = my_start + SV_BLK_CT; start < sieve_size;
+           start += skip, end += skip) {
+        marked += sieveMark(sieve, sieve_size, sieve_base, start, end);
       }
-
-      printf("primes_count: %ld\n", primes_count);
-      printf("marked: %ld\n", marked);
 
       free(sieve);
     }
