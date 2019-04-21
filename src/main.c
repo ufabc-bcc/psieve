@@ -40,36 +40,17 @@ uint64_t mark(SV_BLK_T *sieve, uint64_t sieve_size, uint64_t upper_limit,
   for (i = 0, k = 1, n = 5, right = 0; n * n <= upper_limit;
        i++, k += 1 * right, n += 2 + 2 * right, right = !right) {
     if (!SV_TST_BIT(sieve, i)) {
-      if (!right) {
-        j = (k * n - k) * 2 - 1;
-        sign = -1;
-      } else {
-        j = (k + n * k) * 2 - 1;
-        sign = 1;
-      }
+      j = ((k * n - k) * 2 - 1) * !right + ((k + n * k) * 2 - 1) * right;
 
       if (start > j)
         j += 2 * n * ((start - j) / (2 * n));
 
-      for (; j <= end && j < sieve_size; j += 2 * n) {
-        if (j > start) {
-          // printf("Visit j = %lu\n", j);
+      for (; j <= end && j < sieve_size; j += n + 2 * sign * k, sign *= -1)
+        if (j > start && j <= end && j < sieve_size)
           if (!SV_TST_BIT(sieve, j)) {
             SV_SET_BIT(sieve, j);
-            // primes_count--;
             marked++;
           }
-        }
-        aux = j + n + 2 * sign * k;
-        if (aux > start && aux <= end && aux < sieve_size) {
-          // printf("Visit aux = %lu\n", aux);
-          if (!SV_TST_BIT(sieve, aux)) {
-            SV_SET_BIT(sieve, aux);
-            // primes_count--;
-            marked++;
-          }
-        }
-      }
     }
   }
 
@@ -102,7 +83,7 @@ int main(int argc, char *argv[]) {
   for (i = 0; i < sieve_size; i++)
     SV_CLR_BIT(sieve, i);
 
-  blocks = 32000;
+  blocks = sqrtul(upper_limit);
   primes_count = sieve_size + 2;
 
   for (start = 0, end = blocks; start < sieve_size;
