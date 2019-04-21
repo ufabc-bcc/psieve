@@ -70,6 +70,7 @@ int64_t sieveMark(SV_BLK_T *sieve, int64_t sieve_size, int64_t sieve_base,
         if (j > start) {
           if (!SV_TST_BIT(sieve, j)) {
             SV_SET_BIT(sieve, j);
+            //printf("marked %ld\n", j);
             marked++;
           }
         }
@@ -110,11 +111,19 @@ void Read_n(int *n_p, int my_rank, int comm_sz, MPI_Comm comm) {
   Check_for_error(local_ok, fname, "upper value should be > 0", comm);
 }
 
-int main(void) {
-  SV_BLK_T *sieve;
-  int64_t sieve_size, sieve_base;
-  int64_t i, start, end, primes_count;
+void Allocate_vector(SV_BLK_T **local_s_pp, int local_s_sz, MPI_Comm comm) {
+  int local_ok = 1;
+  char *fname = "Allocate_vector";
 
+  *local_s_pp = malloc((local_s_sz / SV_BLK_SZ + 1) * sizeof(SV_BLK_T));
+
+  if (*local_s_pp == NULL)
+    local_ok = 0;
+
+  Check_for_error(local_ok, fname, "can't allocate local vector(s)", comm);
+}
+
+int main(void) {
   int n;
   int comm_sz, my_rank;
 
@@ -135,24 +144,40 @@ int main(void) {
   } else if (n < 5) {
     printf("2\n");
   } else {
+    int64_t sieve_size, primes_count;
+
     sieve_size = sieveSize(n);
     primes_count = sieve_size + 2;
 
     if (n < 25) {
       printf("%ld\n", primes_count);
     } else {
-      sieve = malloc((sieve_size / SV_BLK_SZ + 1) * sizeof(SV_BLK_T));
+      int64_t i, start, end, sieve_base;
+
+      SV_BLK_T *sieve = NULL;
+      int64_t local_s_sz = sieve_size;
+
+      Allocate_vector(&sieve, local_s_sz, comm);
+
       for (i = 0; i < sieve_size; i++)
         SV_CLR_BIT(sieve, i);
 
       sieve_base = sieveIndexOf(sqrtul(n));
 
-      for (start = 0, end = SV_BLK_CT; start < sieve_size;
+      uint64_t last = !(comm_sz - (my_rank + 1));
+      uint64_t quota = (sieve_size / comm_sz);
+      uint64_t skip = quota * my_rank;
+      uint64_t take = quota + (sieve_size % comm_sz) * last;
+
+      uint64_t marked = 0;
+      for (start = skip, end = SV_BLK_CT; start < skip + take + 1;
            start = end, end += SV_BLK_CT) {
-        primes_count -= sieveMark(sieve, sieve_size, sieve_base, start, end);
+        printf("rank %d marking --start: %ld --limit: %ld\n", my_rank, start, skip + take);
+        marked += sieveMark(sieve, skip + take + 1, sieve_base, start, end);
       }
 
-      printf("%ld\n", primes_count);
+      printf("primes_count: %ld\n", primes_count);
+      printf("marked: %ld\n", marked);
 
       free(sieve);
     }
