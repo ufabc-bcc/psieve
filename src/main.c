@@ -1,4 +1,5 @@
 #include <errno.h>
+#include <mpi.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -79,56 +80,85 @@ int64_t sieveMark(SV_BLK_T *sieve, int64_t sieve_size, int64_t sieve_base,
   return marked;
 }
 
-int main(int argc, char *argv[]) {
+void Check_for_error(int local_ok, char *fname, char *message, MPI_Comm comm) {
+  int ok;
+  int my_rank;
+
+  MPI_Allreduce(&local_ok, &ok, 1, MPI_INT, MPI_MIN, comm);
+  if (!ok) {
+    MPI_Comm_rank(comm, &my_rank);
+    if (my_rank == 0) {
+      fprintf(stderr, "Proc %d > In %s, %s\n", my_rank, fname, message);
+      fflush(stderr);
+    }
+    MPI_Finalize();
+    exit(EXIT_FAILURE);
+  }
+}
+
+void Read_n(int *n_p, int my_rank, int comm_sz, MPI_Comm comm) {
+  int local_ok = 1;
+  char *fname = "Read_n";
+
+  if (my_rank == 0) {
+    printf("What's the upper limit value?\n");
+    scanf("%d", n_p);
+  }
+  MPI_Bcast(n_p, 1, MPI_INT, 0, comm);
+  if (*n_p <= 0)
+    local_ok = 0;
+  Check_for_error(local_ok, fname, "upper value should be > 0", comm);
+}
+
+int main(void) {
   SV_BLK_T *sieve;
   int64_t sieve_size, sieve_base;
-  int64_t upper_limit;
-  char *endptr;
-  int64_t i, n, start, end, primes_count;
-  int8_t right;
+  int64_t i, start, end, primes_count;
 
-  upper_limit = strtol(argv[1], &endptr, 10);
+  int n;
+  int comm_sz, my_rank;
 
-  if (*endptr) {
-    printf("The upper limit value is invalid.\n");
-    exit(EXIT_FAILURE);
-  } else if (upper_limit < 1 || errno == ERANGE) {
-    printf("The upper limit value is out of range.\n");
-    exit(EXIT_FAILURE);
-  }
+  MPI_Comm comm;
 
-  if (upper_limit < 2) {
+  MPI_Init(NULL, NULL);
+  comm = MPI_COMM_WORLD;
+  MPI_Comm_size(comm, &comm_sz);
+  MPI_Comm_rank(comm, &my_rank);
+
+  Read_n(&n, my_rank, comm_sz, comm);
+  printf("Proc %d > n = %d\n", my_rank, n);
+
+  if (n < 2) {
     printf("0\n");
-    exit(EXIT_SUCCESS);
-  } else if (upper_limit < 3) {
+  } else if (n < 3) {
     printf("1\n");
-    exit(EXIT_SUCCESS);
-  } else if (upper_limit < 5) {
+  } else if (n < 5) {
     printf("2\n");
-    exit(EXIT_SUCCESS);
+  } else {
+    sieve_size = sieveSize(n);
+    primes_count = sieve_size + 2;
+
+    if (n < 25) {
+      printf("%ld\n", primes_count);
+    } else {
+      sieve = malloc((sieve_size / SV_BLK_SZ + 1) * sizeof(SV_BLK_T));
+      for (i = 0; i < sieve_size; i++)
+        SV_CLR_BIT(sieve, i);
+
+      sieve_base = sieveIndexOf(sqrtul(n));
+
+      for (start = 0, end = SV_BLK_CT; start < sieve_size;
+           start = end, end += SV_BLK_CT) {
+        primes_count -= sieveMark(sieve, sieve_size, sieve_base, start, end);
+      }
+
+      printf("%ld\n", primes_count);
+
+      free(sieve);
+    }
   }
 
-  sieve_size = sieveSize(upper_limit);
-  primes_count = sieve_size + 2;
+  MPI_Finalize();
 
-  if (upper_limit < 25) {
-    printf("%ld\n", primes_count);
-    exit(EXIT_SUCCESS);
-  }
-
-  sieve = malloc((sieve_size / SV_BLK_SZ + 1) * sizeof(SV_BLK_T));
-  for (i = 0; i < sieve_size; i++)
-    SV_CLR_BIT(sieve, i);
-
-  sieve_base = sieveIndexOf(sqrtul(upper_limit));
-
-  for (start = 0, end = SV_BLK_CT; start < sieve_size;
-       start = end, end += SV_BLK_CT) {
-    primes_count -= sieveMark(sieve, sieve_size, sieve_base, start, end);
-  }
-
-  printf("%ld\n", primes_count);
-
-  free(sieve);
   return 0;
 }
