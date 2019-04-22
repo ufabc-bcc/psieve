@@ -4,9 +4,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define SV_BLK_T char    // SIEVE BLOCK TYPE
-#define SV_BLK_SZ 8      // SIEVE BLOCK SIZE
-#define SV_BLK_SZ_LG 3   // LOG BASE 2 OF SIEVE BLOCK SIZE
+#define SV_BLK_T char     // SIEVE BLOCK TYPE
+#define SV_BLK_SZ 8       // SIEVE BLOCK SIZE
+#define SV_BLK_SZ_LG 3    // LOG BASE 2 OF SIEVE BLOCK SIZE
 #define SV_BLK_CT 2000000 // SIEVE BLOCKS MARKED AT ONCE
 
 #define MOD(a, b) (a & (b - 1))
