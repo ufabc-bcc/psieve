@@ -25,3 +25,7 @@ mpirun -n <comm_sz> psieve.out <upper_limit>
 ```bash
 time mpirun -n <comm_sz> psieve.out <upper_limit>
 ```
+
+## Considerações
+
+O algoritmo sequencial foi utilizado como base para o paralelo e pode ser encontrado na branch [serial](https://github.com/ufabc-bcc/psieve/tree/serial).
