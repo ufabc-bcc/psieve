@@ -4,9 +4,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define SV_BLK_T char     // SIEVE BLOCK TYPE
-#define SV_BLK_SZ 8       // SIEVE BLOCK SIZE
-#define SV_BLK_SZ_LG 3    // LOG BASE 2 OF SIEVE BLOCK SIZE
+#define SV_BLK_T char    // SIEVE BLOCK TYPE
+#define SV_BLK_SZ 8      // SIEVE BLOCK SIZE
+#define SV_BLK_SZ_LG 3   // LOG BASE 2 OF SIEVE BLOCK SIZE
 #define SV_BLK_CT 2000000 // SIEVE BLOCKS MARKED AT ONCE
 
 #define MOD(a, b) (a & (b - 1))
@@ -117,7 +117,8 @@ void Read_n(int64_t *n_p, int argc, char **argv, int my_rank, int comm_sz,
   Check_for_error(local_ok, fname, "upper value should be > 0", comm);
 }
 
-void Allocate_vector(SV_BLK_T **local_s_pp, uint64_t local_s_sz, MPI_Comm comm) {
+void Allocate_vector(SV_BLK_T **local_s_pp, uint64_t local_s_sz,
+                     MPI_Comm comm) {
   int local_ok = 1;
   char *fname = "Allocate_vector";
 
@@ -151,12 +152,8 @@ int main(int argc, char *argv[]) {
   } else {
     int64_t sieve_size, primes_count;
 
-    printf("n: %ld\n", n);
-
     sieve_size = sieveSize(n);
     primes_count = sieve_size + 2;
-
-    printf("sieve_size2: %ld\n", sieve_size);
 
     if (n < 25) {
       printf("%ld\n", primes_count);
@@ -165,7 +162,6 @@ int main(int argc, char *argv[]) {
 
       SV_BLK_T *sieve = NULL;
 
-      
       Allocate_vector(&sieve, sieve_size, comm);
 
       for (i = 0; i < sieve_size; i++)
@@ -180,6 +176,14 @@ int main(int argc, char *argv[]) {
       for (start = my_start, end = my_start + SV_BLK_CT; start < sieve_size;
            start += skip, end += skip) {
         marked += sieveMark(sieve, sieve_size, sieve_base, start, end);
+      }
+
+      int64_t global_sum;
+      MPI_Reduce(&marked, &global_sum, 1, MPI_UINT64_T, MPI_SUM, 0,
+                 MPI_COMM_WORLD);
+
+      if (my_rank == 0) {
+        printf("primes_count: %ld\n", primes_count - global_sum);
       }
 
       free(sieve);
