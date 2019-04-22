@@ -144,11 +144,14 @@ int main(int argc, char *argv[]) {
   Read_n(&n, argc, argv, my_rank, comm_sz, comm);
 
   if (n < 2) {
-    printf("0\n");
+    if (my_rank == 0)
+      printf("0\n");
   } else if (n < 3) {
-    printf("1\n");
+    if (my_rank == 0)
+      printf("1\n");
   } else if (n < 5) {
-    printf("2\n");
+    if (my_rank == 0)
+      printf("2\n");
   } else {
     int64_t sieve_size, primes_count;
 
@@ -156,7 +159,8 @@ int main(int argc, char *argv[]) {
     primes_count = sieve_size + 2;
 
     if (n < 25) {
-      printf("%ld\n", primes_count);
+      if (my_rank == 0)
+        printf("%ld\n", primes_count);
     } else {
       int64_t i, start, end, sieve_base;
 
@@ -183,7 +187,7 @@ int main(int argc, char *argv[]) {
                  MPI_COMM_WORLD);
 
       if (my_rank == 0) {
-        printf("primes_count: %ld\n", primes_count - global_sum);
+        printf("%ld\n", primes_count - global_sum);
       }
 
       free(sieve);
